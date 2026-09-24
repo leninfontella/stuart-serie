@@ -98,6 +98,32 @@ function App() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // ✅ ScrollSpy: Atualiza o item ativo do menu conforme o usuário rola a página
+  useEffect(() => {
+    const sectionTargets = navigationItems.map((item) => item.target);
+
+    const handleScrollSpy = () => {
+      const scrollPosition = window.scrollY + 120; // 120px offset do topo/header
+
+      for (let i = sectionTargets.length - 1; i >= 0; i--) {
+        const section = document.querySelector(sectionTargets[i]) as HTMLElement;
+        if (section) {
+          const sectionTop = section.offsetTop;
+          if (scrollPosition >= sectionTop) {
+            setActiveItem(i);
+            break;
+          }
+        }
+      }
+    };
+
+    // Executa na montagem e no scroll
+    handleScrollSpy();
+    window.addEventListener("scroll", handleScrollSpy, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScrollSpy);
+  }, []);
+
   // ✅ Parallax scrolling refinado no hero
   useEffect(() => {
     let animationFrameId: number | null = null;
