@@ -1222,7 +1222,7 @@ SITE FOOTER SECTION
 }
 
 .footer-logo img {
-  height: clamp(32px, 6vw, 48px);
+  height: clamp(192px, 6vw, 192px);
   width: auto;
   max-width: 100%;
   object-fit: contain;
