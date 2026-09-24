@@ -7,6 +7,9 @@ import {
   Facebook,
   Twitch,
   Tv2Icon,
+  Play,
+  ChevronDown,
+  Sparkles,
 } from "lucide-react";
 
 // ✅ Declare AOS global
@@ -24,7 +27,12 @@ declare global {
   }
 }
 
-const navigationItems = ["Home", "Notícias", "Quadrinhos", "Personagens"];
+const navigationItems = [
+  { name: "Home", target: "#home" },
+  { name: "Trailer", target: "#trailer" },
+  { name: "Visão Geral", target: "#personagens" },
+  { name: "Relacionados", target: "#relacionados" },
+];
 
 // ✅ Hook para Lazy Loading (com HMR support)
 function useLazyLoad() {
@@ -66,17 +74,31 @@ function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
-  // ✅ Scroll handler
+  // ✅ Scroll & Reading Progress handler
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 20);
+
+      // Progresso de leitura da página (0 a 100%)
+      const totalHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        const progress = Math.min(
+          100,
+          Math.max(0, (currentScrollY / totalHeight) * 100),
+        );
+        setScrollProgress(progress);
+      }
     };
-    window.addEventListener("scroll", handleScroll);
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ✅ Parallax effect no hero (com HMR support)
+  // ✅ Parallax scrolling refinado no hero
   useEffect(() => {
     let animationFrameId: number | null = null;
 
@@ -85,14 +107,14 @@ function App() {
         ".hero-image",
       ) as HTMLImageElement;
       const heroSection = document.querySelector(".hero") as HTMLElement;
-
       if (heroSection && heroImage) {
         const scrolled = window.scrollY;
         const heroHeight = heroSection.offsetHeight;
 
-        if (scrolled < heroHeight) {
-          const offset = scrolled * 0.5;
-          heroImage.style.transform = `translateY(${offset}px) scale(1.05)`;
+        if (scrolled <= heroHeight) {
+          const offset = scrolled * 0.45;
+          const scale = 1.05 + (scrolled / heroHeight) * 0.08;
+          heroImage.style.transform = `translate3d(0, ${offset}px, 0) scale(${scale})`;
         }
       }
     };
@@ -104,9 +126,7 @@ function App() {
       animationFrameId = requestAnimationFrame(handleParallax);
     };
 
-    // Inicializa o parallax
     handleParallax();
-
     window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
@@ -119,9 +139,7 @@ function App() {
 
   // ✅ Inicializar AOS (Animate On Scroll) com HMR support
   useEffect(() => {
-    // Verifica se AOS já está carregado
     if (window.AOS) {
-      // Se já existe, apenas reinicializa
       const aos = window.AOS;
       setTimeout(() => {
         aos.refresh();
@@ -129,7 +147,6 @@ function App() {
       return;
     }
 
-    // Se não existe, carrega
     const script = document.createElement("script");
     script.src = "https://unpkg.com/aos@next/dist/aos.js";
     script.async = true;
@@ -137,11 +154,10 @@ function App() {
       const aos = window.AOS;
       if (!aos) return;
 
-      // Pequeno delay para garantir que o DOM está pronto
       setTimeout(() => {
         aos.init({
           duration: 1000,
-          once: false, // ✅ MUDADO: false para permitir re-trigger em HMR
+          once: false,
           offset: 100,
           easing: "ease-in-out-cubic",
         });
@@ -161,17 +177,47 @@ function App() {
     };
   }, []);
 
-  // ✅ Usar hook de lazy loading
+  // ✅ Smooth Scroll com Desconto da Barra de Navegação
+  const handleSmoothScroll = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    targetSelector: string,
+    index: number,
+  ) => {
+    e.preventDefault();
+    setActiveItem(index);
+    setMobileMenuOpen(false);
+
+    const targetElement = document.querySelector(targetSelector);
+    if (targetElement) {
+      const headerOffset = 70;
+      const elementPosition = targetElement.getBoundingClientRect().top;
+      const offsetPosition =
+        elementPosition + window.pageYOffset - headerOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    }
+  };
+
   useLazyLoad();
 
   return (
     <main className="series-page">
-      {/* Header Modernizado */}
+      {/* Header Modernizado com Indicador de Scroll Smooth */}
       <header className={`site-header ${isScrolled ? "scrolled" : ""}`}>
+        <div
+          className="scroll-progress-bar"
+          style={{ width: `${scrollProgress}%` }}
+          aria-hidden="true"
+        />
+
         <div className="header-container">
           <a
             className="site-mark"
             href="#home"
+            onClick={(e) => handleSmoothScroll(e, "#home", 0)}
             aria-label="Stuart NÃO CONSEGUE salvar o UNIVERSO, início"
           >
             <img
@@ -200,19 +246,15 @@ function App() {
           >
             <ul className="site-nav">
               {navigationItems.map((item, index) => (
-                <li key={item}>
+                <li key={item.name}>
                   <a
                     className={`nav-link ${activeItem === index ? "active" : ""}`}
-                    href={`#${item
-                      .toLowerCase()
-                      .normalize("NFD")
-                      .replace(/[\u0300-\u036f]/g, "")}`}
-                    onClick={() => {
-                      setActiveItem(index);
-                      setMobileMenuOpen(false);
-                    }}
+                    href={item.target}
+                    onClick={(e) =>
+                      handleSmoothScroll(e, item.target, index)
+                    }
                   >
-                    {item}
+                    {item.name}
                   </a>
                 </li>
               ))}
@@ -221,18 +263,29 @@ function App() {
         </div>
       </header>
 
-      {/* Seção Hero */}
+      {/* Seção Hero com Entrance Animation & Parallax */}
       <section
         className="hero"
         id="home"
         aria-label="Stuart não consegue salvar o universo"
       >
         <img
-          className="hero-image"
+          className="hero-image hero-entrance-bg"
           src="/images/imagehero.jpeg"
-          alt="Stuart diante de uma parede coberta de desenhos"
+          alt="Stuart não consegue salvar o universo"
         />
         <div className="hero-shade" aria-hidden="true" />
+
+        {/* Scroll Indicator */}
+        <a
+          href="#trailer"
+          className="scroll-indicator hero-animate-5"
+          onClick={(e) => handleSmoothScroll(e, "#trailer", 1)}
+          aria-label="Rolar para o trailer"
+        >
+
+          <ChevronDown className="scroll-chevron" size={20} />
+        </a>
       </section>
 
       {/* Seção Trailer */}
@@ -364,7 +417,11 @@ function App() {
       </section>
 
       {/* Seção Séries Relacionadas */}
-      <section className="related-section" aria-labelledby="related-title">
+      <section
+        className="related-section"
+        id="relacionados"
+        aria-labelledby="related-title"
+      >
         <div className="related-container">
           <h2 id="related-title" data-aos="fade-up">
             RELATED SERIES
@@ -411,8 +468,16 @@ function App() {
         </div>
       </section>
 
-      {/* Seção Vídeo em Loop */}
-      <section className="loop-video-section" aria-label="Vídeo do portal">
+      {/* Seção Vídeo em Loop com Efeito Sombreado & Divisor Cósmico */}
+      <section
+        className="loop-video-section"
+        aria-label="Vídeo do portal"
+        data-aos="fade"
+        data-aos-duration="1200"
+      >
+        {/* Sombra de transição superior */}
+        <div className="loop-video-shade-top" aria-hidden="true" />
+
         <video
           className="loop-video"
           src="/images/portal.mp4"
@@ -423,6 +488,21 @@ function App() {
           preload="metadata"
           aria-label="Portal de Stuart"
         />
+
+        {/* Efeito Sombreado Inferior (entre o vídeo e o footer) */}
+        <div className="loop-video-shade-bottom" aria-hidden="true">
+          <div className="shade-vignette" />
+          <div className="shade-cosmic-glow" />
+        </div>
+
+        {/* Divisor Visual Cósmico Premium */}
+        <div className="portal-divider-bar" aria-hidden="true">
+          <div className="divider-line" />
+          <div className="divider-center-badge">
+            <Sparkles size={16} className="divider-sparkle" />
+          </div>
+          <div className="divider-line" />
+        </div>
       </section>
 
       {/* Footer */}
