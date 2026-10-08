@@ -7,7 +7,6 @@ import {
   Facebook,
   Twitch,
   Tv2Icon,
-  Play,
   ChevronDown,
   Sparkles,
 } from "lucide-react";
